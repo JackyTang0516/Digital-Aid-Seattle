@@ -1,4 +1,4 @@
-# unpaid-intern
+#  Digital Aid Seattle
 
 ## HOW-TO-START
 ### 1. Copy the code into a file named donation_management.py.
