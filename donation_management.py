@@ -3,10 +3,12 @@ from datetime import datetime
 
 class DonationManagement:
     def __init__(self):
+        # Initialize the donations and distributions lists to store donation records and distribution records respectively.
         self.donations = []
         self.distributions = []
 
     def safe_input_integer(self, prompt, min_value=1):
+        # Continuously prompt the user for an integer input until a valid integer that meets the min_value condition is entered.
         while True:
             try:
                 value = int(input(prompt))
@@ -18,6 +20,7 @@ class DonationManagement:
                 print("Invalid input. Please enter a valid integer.")
 
     def register_donation(self, date=None):
+        # Register a new donation with the donor's details and the donation specifics.
         if date is None:
             date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         donor_name = input("Enter donor name: ")
@@ -33,15 +36,18 @@ class DonationManagement:
         print("Donation registered successfully.")
 
     def get_inventory_quantity(self, donation_type):
+        # Calculate the current inventory of a given donation type by subtracting the distributed amount from the donated amount.
         total_donations = sum(donation["quantity"] for donation in self.donations if donation["donation_type"] == donation_type)
         total_distributions = sum(distribution["quantity"] for distribution in self.distributions if distribution["donation_type"] == donation_type)
         return total_donations - total_distributions
 
     def get_known_donation_types(self):
+        # Retrieve a set of all known donation types recorded so far.
         known_types = set(donation["donation_type"] for donation in self.donations)
         return known_types
 
     def distribute_donation(self, date=None):
+        # Manage the distribution of donations ensuring the requested quantity does not exceed the available inventory.
         if date is None:
             date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -66,6 +72,7 @@ class DonationManagement:
         print("Distribution logged successfully.")
 
     def generate_inventory_report(self):
+        # Generate a report of the current inventory for each donation type including the date it was last updated.
         inventory = {}
         last_updated = {}
         for donation in self.donations:
@@ -92,6 +99,7 @@ class DonationManagement:
 
 
     def generate_donator_report(self):
+        # Generate a report detailing all donations made by each donor including the type, quantity, and date of each donation.
         donator_report = {}
         for donation in self.donations:
             donor_name = donation["donor_name"]
