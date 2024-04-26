@@ -3,9 +3,9 @@ from datetime import datetime
 
 class DonationManagement:
     def __init__(self):
-        # Initialize the donations and distributions lists to store donation records and distribution records respectively.
-        self.donations = []
-        self.distributions = []
+        # Initialize the dictionaries to store donation and distribution records by donation type.
+        self.donations = {}
+        self.distributions = {}
 
     def safe_input_integer(self, prompt, min_value=1):
         # Continuously prompt the user for an integer input until a valid integer that meets the min_value condition is entered.
@@ -32,27 +32,28 @@ class DonationManagement:
             "quantity": quantity,
             "date": date
         }
-        self.donations.append(donation)
+        if donation_type in self.donations:
+            self.donations[donation_type].append(donation)
+        else:
+            self.donations[donation_type] = [donation]
         print("Donation registered successfully.")
 
     def get_inventory_quantity(self, donation_type):
-        # Calculate the current inventory of a given donation type by subtracting the distributed amount from the donated amount.
-        total_donations = sum(donation["quantity"] for donation in self.donations if donation["donation_type"] == donation_type)
-        total_distributions = sum(distribution["quantity"] for distribution in self.distributions if distribution["donation_type"] == donation_type)
+        # Calculate the current inventory of a given donation type.
+        total_donations = sum(donation["quantity"] for donation in self.donations.get(donation_type, []))
+        total_distributions = sum(distribution["quantity"] for distribution in self.distributions.get(donation_type, []))
         return total_donations - total_distributions
 
     def get_known_donation_types(self):
         # Retrieve a set of all known donation types recorded so far.
-        known_types = set(donation["donation_type"] for donation in self.donations)
-        return known_types
+        return set(self.donations.keys())
 
     def distribute_donation(self, date=None):
         # Manage the distribution of donations ensuring the requested quantity does not exceed the available inventory.
         if date is None:
             date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
+        
         known_types = self.get_known_donation_types()
-
         donation_type = input("Enter donation type: ")
         while donation_type not in known_types:
             print("Invalid donation type. Known types are: " + ", ".join(known_types))
@@ -68,49 +69,43 @@ class DonationManagement:
             "quantity": quantity,
             "date": date
         }
-        self.distributions.append(distribution)
+        if donation_type in self.distributions:
+            self.distributions[donation_type].append(distribution)
+        else:
+            self.distributions[donation_type] = [distribution]
         print("Distribution logged successfully.")
 
     def generate_inventory_report(self):
         # Generate a report of the current inventory for each donation type including the date it was last updated.
         inventory = {}
         last_updated = {}
-        for donation in self.donations:
-            donation_type = donation["donation_type"]
-            if donation_type not in inventory:
-                inventory[donation_type] = 0
-                last_updated[donation_type] = donation["date"]
-            inventory[donation_type] += donation["quantity"]
-            if donation["date"] > last_updated[donation_type]:
-                last_updated[donation_type] = donation["date"]
+        for donation_type, donations in self.donations.items():
+            inventory[donation_type] = sum(donation["quantity"] for donation in donations)
+            last_updated[donation_type] = max(donation["date"] for donation in donations)
 
-        for distribution in self.distributions:
-            donation_type = distribution["donation_type"]
-            if donation_type in inventory:
-                inventory[donation_type] -= distribution["quantity"]
-            if distribution["date"] > last_updated.get(donation_type, ''):
-                last_updated[donation_type] = distribution["date"]
+        for donation_type, distributions in self.distributions.items():
+            inventory[donation_type] -= sum(distribution["quantity"] for distribution in distributions)
+            if distributions:
+                last_date = max(distribution["date"] for distribution in distributions)
+                if last_date > last_updated.get(donation_type, ''):
+                    last_updated[donation_type] = last_date
 
         print("Inventory Report:")
         for donation_type, quantity in inventory.items():
             if quantity > 0:
                 print(f"{donation_type}: {quantity} (Last Updated: {last_updated[donation_type]})")
 
-
-
     def generate_donator_report(self):
         # Generate a report detailing all donations made by each donor including the type, quantity, and date of each donation.
         donator_report = {}
-        for donation in self.donations:
-            donor_name = donation["donor_name"]
-            donation_type = donation["donation_type"]
-            quantity = donation["quantity"]
-            date = donation["date"]
-            if donor_name not in donator_report:
-                donator_report[donor_name] = {}
-            if donation_type not in donator_report[donor_name]:
-                donator_report[donor_name][donation_type] = []
-            donator_report[donor_name][donation_type].append((quantity, date))
+        for donation_type, donations in self.donations.items():
+            for donation in donations:
+                donor_name = donation["donor_name"]
+                if donor_name not in donator_report:
+                    donator_report[donor_name] = {}
+                if donation_type not in donator_report[donor_name]:
+                    donator_report[donor_name][donation_type] = []
+                donator_report[donor_name][donation_type].append((donation["quantity"], donation["date"]))
 
         print("Donator Report:")
         for donor_name, donations in donator_report.items():
@@ -118,7 +113,6 @@ class DonationManagement:
             for donation_type, details in donations.items():
                 for quantity, date in details:
                     print(f"  {donation_type}: {quantity} on {date}")
-
 
 def main():
     donation_manager = DonationManagement()
