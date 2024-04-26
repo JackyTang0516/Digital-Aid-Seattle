@@ -6,9 +6,23 @@ class DonationManagement:
         self.donations = []
         self.distributions = []
 
-    def register_donation(self, donor_name, donation_type, quantity, date=None):
+    def safe_input_integer(self, prompt, min_value=1):
+        while True:
+            try:
+                value = int(input(prompt))
+                if value >= min_value:
+                    return value
+                else:
+                    print(f"Please enter a number greater than or equal to {min_value}.")
+            except ValueError:
+                print("Invalid input. Please enter a valid integer.")
+
+    def register_donation(self, date=None):
         if date is None:
-            date = datetime.now().strftime("%Y-%m-%d")
+            date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        donor_name = input("Enter donor name: ")
+        donation_type = input("Enter donation type: ")
+        quantity = self.safe_input_integer("Enter quantity/amount: ")
         donation = {
             "donor_name": donor_name,
             "donation_type": donation_type,
@@ -18,9 +32,31 @@ class DonationManagement:
         self.donations.append(donation)
         print("Donation registered successfully.")
 
-    def distribute_donation(self, donation_type, quantity, date=None):
+    def get_inventory_quantity(self, donation_type):
+        total_donations = sum(donation["quantity"] for donation in self.donations if donation["donation_type"] == donation_type)
+        total_distributions = sum(distribution["quantity"] for distribution in self.distributions if distribution["donation_type"] == donation_type)
+        return total_donations - total_distributions
+
+    def get_known_donation_types(self):
+        known_types = set(donation["donation_type"] for donation in self.donations)
+        return known_types
+
+    def distribute_donation(self, date=None):
         if date is None:
-            date = datetime.now().strftime("%Y-%m-%d")
+            date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        known_types = self.get_known_donation_types()
+
+        donation_type = input("Enter donation type: ")
+        while donation_type not in known_types:
+            print("Invalid donation type. Known types are: " + ", ".join(known_types))
+            donation_type = input("Please re-enter a valid donation type: ")
+        quantity = self.safe_input_integer(f"Enter quantity/amount to distribute for {donation_type}: ")
+
+        available_quantity = self.get_inventory_quantity(donation_type)
+        while quantity > available_quantity:
+            print(f"Insufficient inventory for {donation_type}. Available quantity: {available_quantity}")
+            quantity = self.safe_input_integer(f"Enter a new quantity for {donation_type} (available {available_quantity}): ")
         distribution = {
             "donation_type": donation_type,
             "quantity": quantity,
@@ -31,32 +67,50 @@ class DonationManagement:
 
     def generate_inventory_report(self):
         inventory = {}
+        last_updated = {}
         for donation in self.donations:
             donation_type = donation["donation_type"]
             if donation_type not in inventory:
                 inventory[donation_type] = 0
+                last_updated[donation_type] = donation["date"]
             inventory[donation_type] += donation["quantity"]
+            if donation["date"] > last_updated[donation_type]:
+                last_updated[donation_type] = donation["date"]
 
         for distribution in self.distributions:
             donation_type = distribution["donation_type"]
             if donation_type in inventory:
                 inventory[donation_type] -= distribution["quantity"]
+            if distribution["date"] > last_updated.get(donation_type, ''):
+                last_updated[donation_type] = distribution["date"]
 
         print("Inventory Report:")
         for donation_type, quantity in inventory.items():
-            print(f"{donation_type}: {quantity}")
+            if quantity > 0:
+                print(f"{donation_type}: {quantity} (Last Updated: {last_updated[donation_type]})")
+
+
 
     def generate_donator_report(self):
         donator_report = {}
         for donation in self.donations:
             donor_name = donation["donor_name"]
+            donation_type = donation["donation_type"]
+            quantity = donation["quantity"]
+            date = donation["date"]
             if donor_name not in donator_report:
-                donator_report[donor_name] = 0
-            donator_report[donor_name] += donation["quantity"]
+                donator_report[donor_name] = {}
+            if donation_type not in donator_report[donor_name]:
+                donator_report[donor_name][donation_type] = []
+            donator_report[donor_name][donation_type].append((quantity, date))
 
         print("Donator Report:")
-        for donor_name, total_donation in donator_report.items():
-            print(f"{donor_name}: {total_donation}")
+        for donor_name, donations in donator_report.items():
+            print(f"{donor_name}:")
+            for donation_type, details in donations.items():
+                for quantity, date in details:
+                    print(f"  {donation_type}: {quantity} on {date}")
+
 
 def main():
     donation_manager = DonationManagement()
@@ -70,16 +124,10 @@ def main():
         print("5. Exit")
 
         choice = input("Enter your choice: ")
-
         if choice == "1":
-            donor_name = input("Enter donor name: ")
-            donation_type = input("Enter donation type: ")
-            quantity = int(input("Enter quantity/amount: "))
-            donation_manager.register_donation(donor_name, donation_type, quantity)
+            donation_manager.register_donation()
         elif choice == "2":
-            donation_type = input("Enter donation type: ")
-            quantity = int(input("Enter quantity/amount: "))
-            donation_manager.distribute_donation(donation_type, quantity)
+            donation_manager.distribute_donation()
         elif choice == "3":
             donation_manager.generate_inventory_report()
         elif choice == "4":
